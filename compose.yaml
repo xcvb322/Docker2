@@ -1,0 +1,63 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: isur_orders_db
+    environment:
+      POSTGRES_DB: isur_orders
+      POSTGRES_USER: isur_app
+      POSTGRES_PASSWORD: cambiame_por_seguridad
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U isur_app -d isur_orders"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    build:
+      context: .
+      target: runtime
+    container_name: isur_orders_migrate
+    environment:
+      NODE_ENV: development
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: isur_orders
+      DB_USER: isur_app
+      DB_PASSWORD: cambiame_por_seguridad
+    command: ["npm", "run", "migrate"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      target: runtime
+    container_name: isur_orders_api
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      APP_PORT: 3000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: isur_orders
+      DB_USER: isur_app
+      DB_PASSWORD: cambiame_por_seguridad
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  pgdata:

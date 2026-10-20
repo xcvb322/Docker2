@@ -1,0 +1,63 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, feature/* ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: isur_test
+          POSTGRES_USER: isur_test
+          POSTGRES_PASSWORD: test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout Código Fuente
+      uses: actions/checkout@v4
+
+    - name: Configurar Node.js Environment
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+
+    - name: Instalar Dependencias Deterministas (lockfile)
+      run: npm ci
+
+    - name: Ejecutar Migraciones de Esquema en CI
+      env:
+        NODE_ENV: test
+        DB_HOST: localhost
+        DB_PORT: 5432
+        DB_NAME: isur_test
+        DB_USER: isur_test
+        DB_PASSWORD: test_password
+        DB_SSL: false
+      run: npm run migrate
+
+    - name: Correr Suite de Pruebas de Integración
+      env:
+        NODE_ENV: test
+        DB_HOST: localhost
+        DB_PORT: 5432
+        DB_NAME: isur_test
+        DB_USER: isur_test
+        DB_PASSWORD: test_password
+        DB_SSL: false
+      run: npm test
+
+    - name: Validar Construcción de Imagen Docker estática
+      run: docker build -t isur-orders-api:test .
