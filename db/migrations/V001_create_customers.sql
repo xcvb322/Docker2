@@ -5,3 +5,6 @@ CREATE TABLE IF NOT EXISTS customers (
     email VARCHAR(150) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+
+-- Alteración deliberada para provocar error de checksum

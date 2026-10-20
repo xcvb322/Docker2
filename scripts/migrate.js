@@ -30,13 +30,17 @@ async function run() {
       const dbCheck = await client.query('SELECT checksum FROM schema_migrations WHERE version = \$1', [file]);
 
       if (dbCheck.rows.length > 0) {
-
-        if (dbCheck.rows[0].checksum !== currentChecksum) {
-          console.error(`ERROR DE CHECKSUM: El archivo de migración aplicado '${file}' ha sido modificado de forma histórica.`);
+        const savedChecksum = dbCheck.rows[0].checksum;
+        
+        if (savedChecksum !== currentChecksum) {
+          console.error(`\n ==============================================================================`);
+          console.error(`ERROR DE CHECKSUM: El archivo de migración '${file}' fue alterado.`);
+          console.error(`   BD:   ${savedChecksum}`);
+          console.error(`   Local:${currentChecksum}`);
+          console.error(`==============================================================================\n`);
           process.exit(1);
         }
       } else {
-      
         console.log(`Aplicando migración pendiente: ${file}`);
         await client.query('BEGIN');
         await client.query(content);
